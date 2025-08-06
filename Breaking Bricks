@@ -1,0 +1,417 @@
+#include <iostream>
+#include <fstream>
+#include <graphics.h>
+#include <conio.h>
+#include <Math.h>
+#include <cstdlib>
+#include <ctime>
+#include <dos.h>
+using namespace std;
+
+int score = 0;
+int life = 3;
+
+int blocks[4][7];
+
+void setupBlocks()
+{
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 7; j++)
+        {
+            blocks[i][j] = 1;
+        }
+    }
+}
+
+int scoreX = 10;
+int scoreY = 40;
+int highScore = 0;
+
+int loadHighScore()
+{
+    ifstream file("score.txt");//file read
+    int hs = 0;
+    if(file >> hs)
+    {
+        return hs;
+    }
+    return 0;
+}
+
+void saveHighScore(int currentScore)
+{
+    if(currentScore > highScore)
+    {
+        ofstream file("score.txt");//file write
+        file << currentScore;
+        highScore = currentScore;
+    }
+}
+
+void drawScrore()
+{
+    setcolor(WHITE);
+    char scoreText[20];
+    sprintf(scoreText,"Score : %d",score);
+    outtextxy(scoreX, scoreY, scoreText);
+}
+
+void drawLife()
+{
+    int startX = 20;
+    int startY = 20;
+    int radius = 10;
+    int gap = 10;
+    setcolor(WHITE);
+
+    for(int i = 0; i < life ; i++)
+    {
+        circle(startX + i * (radius * 2 + gap), startY, radius);
+        setfillstyle(SOLID_FILL,WHITE );
+        floodfill(startX + i * (radius * 2 + gap)+ 1, startY + 1, WHITE);
+    }
+}
+
+void drawAllBlocks(int screenWidth, int screenHeight)
+{
+    int startX = 100, startY = 40;// 10 edit by miraz
+    int rows = 4, cols = 7, gap = 5;
+
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            if (blocks[i][j] == 1)
+            {
+                int x1 = startX + j * (60 + gap);
+                int y1 = startY + i * (30 + gap);
+
+                int color;
+                if(i==0) color = BLUE;
+                else if(i==1) color = RED;
+                else if(i==2) color = YELLOW;
+                else color = GREEN;
+
+                setcolor(WHITE);
+                rectangle(x1, y1, x1 + 60, y1 + 30);
+                setfillstyle(SOLID_FILL, color);
+                floodfill(x1 + 1, y1 + 1, WHITE);
+            }
+        }
+    }
+}
+
+
+void gameLoop()
+{
+    int gd = DETECT, gm;
+    initgraph(&gd, &gm, "");//BGI path dite hobe
+
+
+    int screenWidth = getmaxx();
+    int screenHeight = getmaxy();
+
+    int barWidth = 120;
+    int barHeight = 20;
+
+    int barX = (screenWidth / 2) - (barWidth / 2);
+    int barY = screenHeight - barHeight - 10;
+
+    int radius = 10;
+    int x = barX + barWidth / 2, y = barY - radius;
+    int dx = 6, dy = -6;////
+
+    setupBlocks();
+
+    int page = 0;
+
+    bool click = false;
+    bool ballLanched = false;
+
+    int barCounter = 0;
+
+    while(1)
+    {
+        setactivepage(page);
+        cleardevice();
+
+        drawScrore();
+
+        drawLife();
+
+        if(kbhit())
+        {
+            char input = getch();
+            if(input == 0 || input == 224)//special character
+            {
+                input = getch();
+                if(input == 72)//up arrow
+                {
+                    ballLanched = true;
+                    click = true;
+                }
+                else if(input == 75 && barX > 0)//left arrow
+                {
+                    barX -= 20;
+                    if(!ballLanched)//
+                    {
+                        x = barX + barWidth / 2;
+                        y = barY - radius;
+                    }
+                }
+                else if(input == 77 && barX + barWidth < screenWidth)//right arrow
+                {
+                    barX += 20;
+                    if (!ballLanched)
+                    {
+                        x = barX + barWidth / 2;
+                        y = barY - radius;
+                    }
+                }
+            }
+            else
+            {
+                if(input == 27)
+                {
+                    break;
+                }
+            }
+        }
+
+        if(click)
+        {
+        	///////////////////////////////////////////////
+    		x += dx;
+    		y += dy;
+        }
+        if(x - radius <= 0 || x + radius >= screenWidth)
+        {
+            dx = -dx;
+        }
+        if (y - radius <= 0)
+        {
+            dy = -dy;
+        }
+
+
+        if(dy > 0 && y + radius >= barY && y + radius <= barY + barHeight)
+        {
+            if(x >= barX && x <= barX + barWidth)
+            {
+              dy =  7; // change korci
+              dy = - dy;
+            }
+        }
+        else if(y - radius > screenHeight)
+        {
+            life--;
+            if(life == 0)
+            {
+                saveHighScore(score);
+                setactivepage(page);
+                setvisualpage(page);
+                page = 1 - page;
+                cleardevice();
+
+                setcolor(WHITE);
+
+                outtextxy(screenWidth/2 - 60,screenHeight/2, "GAME OVER");
+                barCounter = 0; // Edit by Miraz
+                char scoreText[20];
+                sprintf(scoreText,"Your Score : %d",score);
+                outtextxy(screenWidth/2 - 130,screenHeight/2 + 30, scoreText);
+
+                char highText[30];
+                sprintf(highText, "High Score : %d", highScore);
+                outtextxy(screenWidth/2 - 130,screenHeight/2 + 50, highText);
+                outtextxy(screenWidth/2 - 130,screenHeight/2 + 70, "Press R to Restart or ESC to Quit");
+
+
+                while(true)
+                {
+                    if(kbhit())
+                    {
+                        char ch = getch();
+                        if(ch == 27)//esc
+                        {
+                            return;
+                        }
+                        if(ch == 'r' || ch == 'R')
+                        {
+                            life = 3;
+                            score = 0;
+
+                            setupBlocks();
+
+                            barWidth = 120;
+                            barHeight = 20;
+                            barX = (screenWidth / 2) - (barWidth / 2);
+                            barY = screenHeight - barHeight - 10;
+
+                            x = barX + barWidth / 2;
+                            y = barY - radius;
+
+
+                            dx = 6;
+                            dy = -6;
+
+                            scoreX = 10;
+                            scoreY = 40;
+
+                            drawScrore();
+                            click = false;
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+            setvisualpage(page);
+
+            barWidth = 120;
+            barHeight = 20;
+
+            barX = (screenWidth / 2) - (barWidth / 2);
+            barY = screenHeight - barHeight - 10;
+
+            x = barX + barWidth / 2;
+            y = barY - radius;
+            dx = 6;
+            dy = -6;
+            click = false;
+            ballLanched = false;
+
+            setactivepage(page);//
+            setvisualpage(page);//
+            page = 1 - page;
+
+            delay(20); // pause a bit
+        }
+
+
+
+        int startX = 100, startY = 40;// 10 edit by miraz
+        int rows = 4, cols = 7, gap = 5;
+
+
+        for(int i = 0; i < rows; i++)
+        {
+            for(int j = 0; j < cols; j++)
+            {
+                if(blocks[i][j] == 1)
+                {
+                    int blockX = startX + j * (60 + gap);
+                    int blockY = startY + i * (30 + gap);
+
+                    if(x >= blockX && x <= blockX + 60 && y >= blockY && y <= blockY + 30)
+                    {
+                        barCounter++;
+
+                        blocks[i][j] = 0;
+                        dy = -dy;
+                        score += 10;
+
+                        goto end_of_collision_check;
+                    }
+                }
+            }
+        }
+end_of_collision_check:
+        ;
+
+
+
+        if(barCounter == 28 && life != 0)
+        {
+            click = false;//pause
+            ballLanched = false;//ektu pause
+
+            setupBlocks();
+            barCounter = 0;
+
+            for(int offset = -200; offset <= 0; offset += 10)
+            {
+                setactivepage(page);
+                cleardevice();
+
+                drawScrore();
+                drawLife();
+
+                int tempStartY = 10 + offset;
+
+                int startX = 100;
+                int rows = 4, cols = 7, gap = 5;
+
+                for(int i = 0; i < rows; i++)
+                {
+                    for(int j = 0; j < cols; j++)
+                    {
+                        if(blocks[i][j] == 1)
+                        {
+                            int x1 = startX + j * (60 + gap);
+                            int y1 = tempStartY + i * (30 + gap);
+
+                            int color;
+                            if(i==0) color = RED;
+                            else if(i==1) color = YELLOW;
+                            else if(i==2) color = GREEN;
+                            else color = BLUE;
+
+                            setcolor(WHITE);
+                            rectangle(x1, y1, x1 + 60, y1 + 30);
+                            setfillstyle(SOLID_FILL, color);
+                            floodfill(x1 + 1, y1 + 1, WHITE);
+                        }
+                    }
+                }
+
+                // Draw ball and paddle
+                setcolor(WHITE);
+                circle(x, y, radius);
+                setfillstyle(SOLID_FILL, WHITE);
+                floodfill(x + 1, y + 1, WHITE);
+
+                setcolor(WHITE);
+                rectangle(barX, barY, barX + barWidth, barY + barHeight);
+                setfillstyle(SOLID_FILL, WHITE);
+                floodfill(barX + 1, barY + 1, WHITE);
+
+                setvisualpage(page);
+                page = 1 - page;
+                delay(30);
+            }
+            click = true;//games start
+            ballLanched = true;//games start
+        }
+
+
+        drawAllBlocks(screenWidth, screenHeight);//
+
+        setcolor(WHITE);
+        circle(x, y, radius);
+        setfillstyle(SOLID_FILL, WHITE);
+        floodfill(x + 1, y + 1, WHITE);
+
+        setcolor(WHITE);
+        rectangle(barX, barY, barX + barWidth, barY + barHeight);
+        setfillstyle(SOLID_FILL, WHITE);
+        floodfill(barX + 1, barY + 1, WHITE);
+
+
+        setvisualpage(page);
+        page = 1 - page;
+
+        delay(20);
+    }
+
+    closegraph();
+}
+
+int main()
+{
+    highScore = loadHighScore();
+    gameLoop();
+    return 0;
+}
